@@ -82,6 +82,74 @@ function tipPos(mins, r) {
 }
 
 /* ---------- 描画 ---------- */
+/* ---------- 演出ヘルパー ---------- */
+function flashFx(color) {
+  const fx = $('flashFx'); if (!fx) return;
+  fx.style.background = color;
+  fx.classList.remove('go'); void fx.offsetWidth; fx.classList.add('go');
+}
+function burst(anchorEl, n, colors) {
+  if (!anchorEl) return;
+  for (let i = 0; i < n; i++) {
+    const sp = document.createElement('span');
+    sp.className = 'particle';
+    const ang = Math.random() * Math.PI * 2, dist = 44 + Math.random() * 72;
+    sp.style.setProperty('--dx', (Math.cos(ang) * dist) + 'px');
+    sp.style.setProperty('--dy', (Math.sin(ang) * dist - 24) + 'px');
+    sp.style.background = colors[i % colors.length];
+    sp.style.left = '50%'; sp.style.top = '38%';
+    anchorEl.appendChild(sp);
+    setTimeout(() => sp.remove(), 920);
+  }
+}
+let clockShown = null, clockTo = null, clockAnimating = false;
+function setHands(now, deadline) {
+  $('handHour').style.transform = 'rotate(' + handAngle(now) + 'deg)';
+  $('handMin').style.transform = 'rotate(' + ((now % 60) / 60) * 360 + 'deg)';
+  $('handDead').style.transform = 'rotate(' + ((deadline % 60) / 60) * 360 + 'deg)';
+  const arcEl = $('clockArc');
+  if (arcEl) {
+    const gap = deadline - now;
+    const sweep = Math.min(Math.max(0, gap), 60) * 6;
+    const col = gap > 15 ? 'rgba(124,199,160,.55)' : (gap > 5 ? 'rgba(242,178,92,.6)' : 'rgba(239,125,155,.6)');
+    arcEl.style.background = 'conic-gradient(from ' + ((now % 60) / 60) * 360 + 'deg, ' + col + ' 0deg, ' + col + ' ' + sweep + 'deg, transparent ' + sweep + 'deg)';
+  }
+}
+function pulseClock() {
+  const f = $('clockFace'); if (!f) return;
+  f.classList.remove('clockTickPulse'); void f.offsetWidth; f.classList.add('clockTickPulse');
+}
+function updateClock(v) {
+  if (!clockShown) { clockShown = { now: v.now, deadline: v.deadline }; setHands(v.now, v.deadline); return; }
+  clockTo = { now: v.now, deadline: v.deadline };
+  if (clockAnimating) return;
+  if (v.now === clockShown.now && v.deadline === clockShown.deadline) { setHands(v.now, v.deadline); return; }
+  if (typeof requestAnimationFrame !== 'function') { clockShown = { ...clockTo }; setHands(v.now, v.deadline); return; }
+  clockAnimating = true;
+  const from = { ...clockShown };
+  const face = $('clockFace'); if (face) face.classList.add('animating');
+  const start = performance.now(), dur = 1500; let lastStep = -1;
+  const frame = (t) => {
+    const to = clockTo, k = Math.min(1, (t - start) / dur);
+    const total = to.now - from.now;
+    let nowI;
+    if (total > 0) {
+      const stepped = Math.min(total, Math.floor(k * total));
+      nowI = from.now + stepped;
+      if (stepped !== lastStep) { lastStep = stepped; if (stepped > 0) pulseClock(); }
+    } else nowI = from.now + total * k;
+    const ks = k * k * (3 - 2 * k);
+    setHands(nowI, from.deadline + (to.deadline - from.deadline) * ks);
+    if (k < 1) requestAnimationFrame(frame);
+    else { clockAnimating = false; clockShown = { ...to }; if (face) face.classList.remove('animating'); setHands(to.now, to.deadline); }
+  };
+  requestAnimationFrame(frame);
+}
+const prevStatus = {};
+let prevBoardKey = '';
+const drawnFxDone = new Set();
+let lastEventFx = '', lastStagePhase = '';
+
 function render() {
   if (!view) return;
   const v = view;
@@ -97,18 +165,11 @@ function render() {
   if (gap >= 15) { sb.className = 'safetyBox'; sb.textContent = 'まだ間に合う'; }
   else if (gap >= 5) { sb.className = 'safetyBox'; sb.style.background = '#fff6da'; sb.style.color = '#96741d'; sb.textContent = 'そろそろ危ない'; }
   else { sb.className = 'safetyBox danger'; sb.style.background = ''; sb.style.color = ''; sb.textContent = gap <= 0 ? '今起きないと遅刻！' : 'ギリギリ！'; }
-  $('handHour').style.transform = 'rotate(' + handAngle(v.now) + 'deg)';
-  $('handMin').style.transform = 'rotate(' + ((v.now % 60) / 60) * 360 + 'deg)';
-  $('handDead').style.transform = 'rotate(' + ((v.deadline % 60) / 60) * 360 + 'deg)';
-  const arcEl = $('clockArc');
-  if (arcEl) {
-    const gap = v.deadline - v.now;
-    const sweep = Math.min(Math.max(0, gap), 60) * 6;
-    const col = gap > 15 ? 'rgba(124,199,160,.55)' : (gap > 5 ? 'rgba(242,178,92,.6)' : 'rgba(239,125,155,.6)');
-    arcEl.style.background = 'conic-gradient(from ' + ((v.now % 60) / 60) * 360 + 'deg, ' + col + ' 0deg, ' + col + ' ' + sweep + 'deg, transparent ' + sweep + 'deg)';
-  }
+  updateClock(v);
 
   // 得点トークン
+  const boardKey = v.players.map(p => p.score + ':' + p.status).join(',');
+  const tokAnim = boardKey !== prevBoardKey; prevBoardKey = boardKey;
   const board = $('scoreBoard');
   board.querySelectorAll('.scoreTok').forEach(e => e.remove());
   const counts = {};
@@ -119,7 +180,7 @@ function render() {
     const off = (rank - 1) * 7;
     const c = cellCenter(shown);
     const t = document.createElement('div');
-    t.className = 'scoreTok';
+    t.className = 'scoreTok' + (tokAnim ? ' tokIn' : '');
     t.style.background = p.color;
     t.style.left = c.x + '%';
     t.style.top = c.y + '%';
@@ -153,6 +214,15 @@ function render() {
       '<div class="scoreNums"><div class="n">' + p.score + '</div><div class="lab">今回の点</div></div>' +
       '<div class="scoreNums"><div class="n" style="color:#6a58a8">' + p.total + '</div><div class="lab">合計</div></div></div>';
   }).join('');
+  const rowEls = $('playerList').children;
+  v.players.forEach((p, i) => {
+    const prev = prevStatus[p.id];
+    if (prev && prev !== p.status && rowEls[i]) {
+      if (p.status === 'bust') rowEls[i].classList.add('rowBust');
+      if (p.status === 'safe') rowEls[i].classList.add('rowSafe');
+    }
+    prevStatus[p.id] = p.status;
+  });
   $('logBox').innerHTML = v.logs.map(l => '<div>' + esc(l) + '</div>').join('');
 
   renderMyArea();
@@ -260,7 +330,7 @@ function renderStage() {
         const gainTxt = x.gain >= 4 ? '大当たり！' : x.gain === 0 ? '残念…0点' : '+' + x.gain + '点';
         return '<div style="text-align:center"><b>' + esc(p.name) + '</b>' +
           '<div class="drawCard' + (x.drawn ? ' drawn' : '') + gainCls + '" data-draw="' + x.playerId + '">' +
-          '<div class="drawInner">' +
+          '<div class="drawInner' + (x.drawn ? '' : ' anticipation') + '">' +
           '<div class="dface cardBack">あと5分だけ…<br>二度寝カード</div>' +
           '<div class="dface front"><img src="' + x.card.img + '" alt="' + esc(x.card.name) + '"></div>' +
           '</div></div>' +
@@ -273,8 +343,29 @@ function renderStage() {
         const pid = parseInt(el.dataset.draw, 10);
         if (mode === 'local') markDrawnAndSync(pid);
         else if (mode === 'host') { if (pid === myPlayerId) markDrawnAndSync(pid); }
-        else if (mode === 'guest') { if (pid === myPlayerId) sendNapDraw(); }
+        else if (mode === 'guest') {
+          if (pid === myPlayerId) {
+            const inn = el.querySelector('.drawInner');
+            if (inn && !inn.dataset.sent) { inn.dataset.sent = '1'; inn.classList.add('charging'); setTimeout(sendNapDraw, 330); }
+          }
+        }
       };
+    });
+    v.pendingNaps.forEach(x => {
+      const k = v.round + '-' + v.turn + '-' + x.playerId;
+      if (x.drawn && !drawnFxDone.has(k)) {
+        drawnFxDone.add(k);
+        const card = stage.querySelector('[data-draw="' + x.playerId + '"]');
+        if (card) {
+          if (x.gain >= 1) burst(card, x.gain >= 4 ? 16 : 9, x.gain >= 4 ? ['#ffb02e', '#ffd76e', '#ff8a5c'] : ['#b18fe8', '#8b75d7', '#e5d9f4']);
+          if (x.gain >= 3) {
+            const gp = document.createElement('div');
+            gp.className = 'gainPop'; gp.textContent = '+' + x.gain;
+            card.appendChild(gp);
+            setTimeout(() => gp.remove(), 1250);
+          }
+        }
+      }
     });
   } else if (v.phase === 'eventConfirm' && v.lastEvent) {
     const e = v.lastEvent;
@@ -289,6 +380,17 @@ function renderStage() {
       '<div style="font-size:25px;font-weight:950;color:' + (e.delta > 0 ? '#2e8b62' : '#d76f94') + ';margin-top:4px">最終出発 ' + (e.delta > 0 ? '+' : '') + e.delta + '分</div></div>' +
       '<div class="flipCard"><div class="flipInner"><img src="' + e.img + '" alt="' + esc(e.name) + '"></div></div>' +
       '<div style="text-align:center;font-weight:900;padding:7px 10px;border-radius:12px;' + tierStyle + '">' + tierTxt + '</div></div>';
+    const evKey = v.round + '-' + v.turn + '-ev';
+    if (lastEventFx !== evKey) {
+      lastEventFx = evKey;
+      const card = stage.querySelector('.flipCard');
+      if (card) {
+        card.style.setProperty('--sh', tier === 2 ? '14px' : tier === 1 ? '8px' : '4px');
+        card.classList.add('impactShake');
+        if (e.delta > 0) burst(card, 10, ['#7cc7a0', '#a8e6c3', '#2e8b62']);
+      }
+      flashFx(tier === 2 ? '#ef5d7d' : (e.delta > 0 ? '#7cc7a0' : '#f2b25c'));
+    }
   } else if (v.phase === 'roundEnd') {
     closeOverlay();
     panel.classList.remove('hidden');
@@ -305,6 +407,16 @@ function renderStage() {
   } else {
     panel.classList.add('hidden'); stage.innerHTML = '';
     if (v.phase === 'choice' && passCurrent == null) closeOverlay();
+  }
+  if (v.phase !== lastStagePhase) {
+    const bp = { check: '確認ターン', reveal: '一斉公開！', napDraw: '二度寝カード！', eventConfirm: 'ハプニング！', roundEnd: 'ラウンド終了' }[v.phase];
+    lastStagePhase = v.phase;
+    if (bp && stage.innerHTML) {
+      const b = document.createElement('div');
+      b.className = 'phaseBanner'; b.textContent = bp;
+      stage.appendChild(b);
+      setTimeout(() => b.remove(), 1150);
+    }
   }
 }
 function rankHtml(v, final) {
@@ -365,7 +477,21 @@ function submitReadyAndSync(id) {
   game.submitReady(id);
   syncFromGame();
 }
+const drawingNow = new Set();
 function markDrawnAndSync(id) {
+  if (!game || game.phase !== 'napDraw') return;
+  if (drawingNow.has(id)) return;
+  const cardEl = document.querySelector('[data-draw="' + id + '"]');
+  const inn = cardEl ? cardEl.querySelector('.drawInner') : null;
+  if (inn && !cardEl.classList.contains('drawn')) {
+    drawingNow.add(id);
+    inn.classList.add('charging');
+    setTimeout(() => { drawingNow.delete(id); doMarkDrawn(id); }, 330);
+    return;
+  }
+  doMarkDrawn(id);
+}
+function doMarkDrawn(id) {
   if (!game || game.phase !== 'napDraw') return;
   const done = game.markNapDrawn(id);
   syncFromGame();

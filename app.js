@@ -125,8 +125,8 @@ function render() {
   // プレイヤー行
   $('playerList').innerHTML = v.players.map(p => {
     let chip;
-    if (p.status === 'bust') chip = '<span class="chip bust">遅刻 0点</span>';
-    else if (p.status === 'safe') chip = '<span class="chip wake">起床済み ' + p.score + '点</span>';
+    if (p.status === 'bust') chip = '<span class="chip bust">遅刻</span>';
+    else if (p.status === 'safe') chip = '<span class="chip wake">起床済み</span>';
     else if (v.phase === 'choice') chip = p.hasChosen ? '<span class="chip">選んだ ✓</span>' : '<span class="chip wait">選択中…</span>';
     else if (p.choice === 'wake') chip = '<span class="chip wake choiceFlip">起きる</span>';
     else if (p.choice === 'sleep') chip = '<span class="chip sleep choiceFlip">あと5分</span>';
@@ -134,9 +134,10 @@ function render() {
     const conn = p.connected ? '' : ' <span class="chip wait">切断中（ボット代行）</span>';
     return '<div class="pRow' + (p.id === myPlayerId ? ' me' : '') + (p.status === 'bust' && v.phase === 'choice' && lastPhase === 'eventConfirm' ? ' busted' : '') + '">' +
       '<div class="avatar" style="background:' + p.color + '">' + (p.id + 1) + '</div>' +
-      '<div><b>' + esc(p.name) + '</b>' + (p.isBot ? ' <span class="chip">BOT</span>' : '') + conn +
-      '<div class="small">ラウンド得点: ' + p.roundScores.map(s => s == null ? '―' : s).join(' / ') + '</div></div>' +
-      '<div>' + chip + '</div><div style="font-weight:950;font-size:17px">' + p.total + '点</div></div>';
+      '<div><b>' + esc(p.name) + '</b>' + (p.isBot ? ' <span class="chip">BOT</span>' : '') + conn + ' ' + chip +
+      '<div class="small">R1: ' + (p.roundScores[0] == null ? '―' : p.roundScores[0]) + ' ／ R2: ' + (p.roundScores[1] == null ? '―' : p.roundScores[1]) + ' ／ R3: ' + (p.roundScores[2] == null ? '―' : p.roundScores[2]) + '</div></div>' +
+      '<div class="scoreNums"><div class="n">' + p.score + '</div><div class="lab">今回の点</div></div>' +
+      '<div class="scoreNums"><div class="n" style="color:#6a58a8">' + p.total + '</div><div class="lab">合計</div></div></div>';
   }).join('');
   $('logBox').innerHTML = v.logs.map(l => '<div>' + esc(l) + '</div>').join('');
 
@@ -146,6 +147,18 @@ function render() {
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+/* 全員の今の点数と状態を小さく並べる帯（モーダルや操作エリア用） */
+function statusWord(p) {
+  if (p.status === 'bust') return '遅刻';
+  if (p.status === 'safe') return '起床済み';
+  return '二度寝中';
+}
+function standingsStrip(v) {
+  return '<div class="standStrip">' + v.players.map(p =>
+    '<span class="standChip"><span style="color:' + p.color + '">●</span> ' + esc(p.name) + ': 今回<b>' + p.score + '点</b> / 合計<b>' + p.total + '点</b>（' + statusWord(p) + '）</span>'
+  ).join('') + '</div>';
+}
+
 /* 自分の操作エリア */
 function renderMyArea() {
   const v = view; if (!v) return;
@@ -154,7 +167,7 @@ function renderMyArea() {
     const me = v.players[myPlayerId];
     if (!me) { area.innerHTML = ''; return; }
     if (v.phase === 'choice' && me.status === 'sleeping' && !me.hasChosen) {
-      area.innerHTML = '<b>あなたの番です</b><div class="voteBig">' +
+      area.innerHTML = '<b>あなたの番です</b>' + standingsStrip(v) + '<div class="voteBig">' +
         '<button class="voteBtn wake" id="myWake"><span class="big">☀</span>起きる</button>' +
         '<button class="voteBtn sleep" id="mySleep"><span class="big">☾</span>あと5分</button></div>' +
         '<div class="small" style="margin-top:8px">締切まであと' + (v.deadline - v.now) + '分。あと5分の基本点は、選んだ人数で決まります（1人=3点／2〜3人=2点／4人以上=1点）。</div>';
@@ -306,10 +319,12 @@ function nextPass() {
   overlay('<div style="text-align:center"><div class="avatar" style="background:' + p.color + ';margin:auto;width:52px;height:52px;font-size:18px">' + (id + 1) + '</div>' +
     '<h3 style="margin:8px 0 2px">' + esc(p.name) + ' さんの番です</h3>' +
     '<div class="small">他の人は画面を見ないでください</div>' +
-    '<div class="small" style="margin-top:6px">今 ' + Core.fmt(game.now) + ' ／ 締切 ' + Core.fmt(game.deadline) + '（あと' + (game.deadline - game.now) + '分）／ 現在 ' + p.score + '点</div>' +
+    '<div class="small" style="margin-top:6px">今 ' + Core.fmt(game.now) + ' ／ 締切 ' + Core.fmt(game.deadline) + '（あと' + (game.deadline - game.now) + '分）</div>' +
+    standingsStrip(game.publicView()) +
     '<button class="btn main" id="passReady" style="margin-top:12px">' + esc(p.name) + ' です（タップして選択）</button></div>');
   $('passReady').onclick = () => {
     overlay('<div style="text-align:center"><b style="font-size:19px">' + esc(p.name) + ' さん、どうする？</b></div>' +
+      standingsStrip(game.publicView()) +
       '<div class="voteBig"><button class="voteBtn wake" id="pvWake"><span class="big">☀</span>起きる</button>' +
       '<button class="voteBtn sleep" id="pvSleep"><span class="big">☾</span>あと5分</button></div>' +
       '<div class="small" style="margin-top:8px">あと5分の基本点は選んだ人数で決まります（1人=3点／2〜3人=2点／4人以上=1点）。カードの補正（-2〜+2）が付きます。</div>');

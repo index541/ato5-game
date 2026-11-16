@@ -38,28 +38,30 @@ function confetti() {
 /* ---------- 時計と得点盤（静的部品） ---------- */
 (function buildClock() {
   const f = $('clockFace');
-  for (let m = 435; m <= 530; m += 5) {
-    if (![450, 480, 510].includes(m)) continue;
-    const a = ((m % 720) / 720) * Math.PI * 2;
-    const s = document.createElement('span');
-    s.className = 'clockNum';
-    s.style.left = (50 + Math.sin(a) * 40) + '%';
-    s.style.top = (50 - Math.cos(a) * 40) + '%';
-    s.textContent = Core.fmt(m);
-    f.appendChild(s);
-  }
-  for (let m = 435; m <= 530; m += 5) {
-    const a = ((m % 720) / 720) * Math.PI * 2;
+  const arc = document.createElement('div'); arc.className = 'clockArc'; arc.id = 'clockArc';
+  f.appendChild(arc);
+  for (let i = 0; i < 60; i++) {
+    const ang = (i / 60) * Math.PI * 2, major = i % 5 === 0;
     const tk = document.createElement('span');
-    tk.className = 'clockTick' + (m % 30 === 0 ? ' major' : '');
-    tk.style.left = (50 + Math.sin(a) * 45.5) + '%';
-    tk.style.top = (50 - Math.cos(a) * 45.5) + '%';
+    tk.className = 'clockTick' + (major ? ' major' : '');
+    tk.style.left = (50 + Math.sin(ang) * 46.5) + '%';
+    tk.style.top = (50 - Math.cos(ang) * 46.5) + '%';
+    tk.style.transform = 'translate(-50%,-50%) rotate(' + (i * 6) + 'deg)';
     f.appendChild(tk);
   }
+  for (let n = 1; n <= 12; n++) {
+    const ang = (n / 12) * Math.PI * 2;
+    const el = document.createElement('span');
+    el.className = 'clockNum'; el.textContent = n;
+    el.style.left = (50 + Math.sin(ang) * 37.5) + '%';
+    el.style.top = (50 - Math.cos(ang) * 37.5) + '%';
+    f.appendChild(el);
+  }
   const dn = document.createElement('div'); dn.className = 'clockHand deadline'; dn.id = 'handDead';
-  const nw = document.createElement('div'); nw.className = 'clockHand now'; nw.id = 'handNow';
+  const hh = document.createElement('div'); hh.className = 'clockHand hour'; hh.id = 'handHour';
+  const mh = document.createElement('div'); mh.className = 'clockHand minute'; mh.id = 'handMin';
   const c = document.createElement('div'); c.className = 'clockCenter';
-  f.append(dn, nw, c);
+  f.append(dn, hh, mh, c);
 })();
 (function buildScore() {
   const b = $('scoreBoard');
@@ -95,8 +97,16 @@ function render() {
   if (gap >= 15) { sb.className = 'safetyBox'; sb.textContent = 'まだ間に合う'; }
   else if (gap >= 5) { sb.className = 'safetyBox'; sb.style.background = '#fff6da'; sb.style.color = '#96741d'; sb.textContent = 'そろそろ危ない'; }
   else { sb.className = 'safetyBox danger'; sb.style.background = ''; sb.style.color = ''; sb.textContent = gap <= 0 ? '今起きないと遅刻！' : 'ギリギリ！'; }
-  $('handNow').style.transform = 'rotate(' + handAngle(v.now) + 'deg)';
+  $('handHour').style.transform = 'rotate(' + handAngle(v.now) + 'deg)';
+  $('handMin').style.transform = 'rotate(' + ((v.now % 60) / 60) * 360 + 'deg)';
   $('handDead').style.transform = 'rotate(' + handAngle(v.deadline) + 'deg)';
+  const arcEl = $('clockArc');
+  if (arcEl) {
+    const sweep = Math.max(0, v.deadline - v.now) * 0.5;
+    const gap = v.deadline - v.now;
+    const col = gap > 15 ? 'rgba(124,199,160,.55)' : (gap > 5 ? 'rgba(242,178,92,.6)' : 'rgba(239,125,155,.6)');
+    arcEl.style.background = 'conic-gradient(from ' + handAngle(v.now) + 'deg, ' + col + ' 0deg, ' + col + ' ' + sweep + 'deg, transparent ' + sweep + 'deg)';
+  }
 
   // 得点トークン
   const board = $('scoreBoard');

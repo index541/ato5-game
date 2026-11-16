@@ -21,7 +21,8 @@ body{font-family:"M PLUS Rounded 1c","Segoe UI","Yu Gothic UI","Meiryo",sans-ser
 .app{position:relative;z-index:1;max-width:640px;margin:auto;padding:12px 12px 40px}
 .hidden{display:none!important}
 h1{font-size:34px;margin:6px 0 2px}
-.panel{background:rgba(255,255,255,.85);border:1px solid rgba(139,117,215,.16);border-radius:22px;padding:14px;box-shadow:0 10px 28px rgba(84,67,111,.08);margin-bottom:10px}
+.panel{background:rgba(255,255,255,.85);border:1px solid rgba(139,117,215,.16);border-radius:20px;padding:10px 12px;box-shadow:0 10px 28px rgba(84,67,111,.08);margin-bottom:8px}
+#myPanel{position:sticky;bottom:8px;z-index:30;box-shadow:0 14px 34px rgba(84,67,111,.18)}
 .btn{border:0;border-radius:16px;min-height:50px;padding:11px 14px;font-weight:900;font-size:15px;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;width:100%}
 .btn:active{transform:scale(.96)}
 .btn.main{background:linear-gradient(135deg,#9a83e3,#ef9fbd);color:#fff;box-shadow:0 8px 18px rgba(139,117,215,.25)}
@@ -32,7 +33,7 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 .top{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(139,117,215,.15);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin:-12px -12px 10px}
 .pill{background:#f1ebff;border:1px solid #e2d8f5;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:700}
 .pills{display:flex;gap:5px;flex-wrap:wrap}
-.clockBoard{display:grid;grid-template-columns:minmax(170px,250px) 1fr;gap:14px;align-items:center}
+.clockBoard{display:grid;grid-template-columns:minmax(128px,180px) 1fr;gap:10px;align-items:center}
 .clockFace{position:relative;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 46%,#fff 0 62%,#f5efff 63% 100%);border:8px solid #fff;box-shadow:0 12px 35px rgba(79,61,107,.14),inset 0 0 0 2px #e5d9f4}
 .clockNum{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:900;color:#756881;z-index:2}
 .clockHand{position:absolute;left:50%;bottom:50%;width:5px;border-radius:99px;transform-origin:50% 100%;transition:transform 1s cubic-bezier(.34,1.4,.4,1);z-index:5}
@@ -40,21 +41,21 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 .clockHand.deadline{height:40%;width:4px;background:#ed91ae;margin-left:-2px;z-index:4}
 .clockCenter{position:absolute;left:50%;top:50%;width:13px;height:13px;transform:translate(-50%,-50%);border-radius:50%;background:#655576;border:3px solid #fff;z-index:7}
 .clockTip{position:absolute;transform:translate(-50%,-50%);padding:3px 7px;border-radius:9px;background:#fff;font-size:10px;font-weight:900;box-shadow:0 3px 10px rgba(70,55,90,.15);z-index:8;transition:left 1s cubic-bezier(.34,1.4,.4,1),top 1s cubic-bezier(.34,1.4,.4,1)}
-.timePill{padding:9px 12px;border-radius:15px;background:#fff;border:1px solid #eee4f4;margin-bottom:7px}
-.timePill b{display:block;font-size:20px}
+.timePill{padding:6px 10px;border-radius:13px;background:#fff;border:1px solid #eee4f4;margin-bottom:5px;font-size:12px}
+.timePill b{display:block;font-size:17px}
 .timePill.now b{color:#7963c3}.timePill.dead b{color:#d76f94}
 .safetyBox{padding:9px 12px;border-radius:15px;font-weight:900;background:#eaf8f3;color:#39836d}
 .safetyBox.danger{background:#fff0f2;color:#bd5964;animation:pulse .7s ease infinite alternate}
 @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.04)}}
 .scoreWrap{position:relative;padding-bottom:4px}
-.scoreBoard{position:relative;width:100%;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(4,42px);gap:3px}
+.scoreBoard{position:relative;width:100%;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(4,35px);gap:3px}
 .scoreCell{border:1px solid var(--line);border-radius:7px;background:#fff;display:grid;place-items:center;font-size:11px;color:var(--muted)}
 .scoreTok{position:absolute;width:25px;height:25px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.2);display:grid;place-items:center;color:#fff;font-size:9px;font-weight:900;transition:left .8s cubic-bezier(.34,1.3,.4,1),top .8s cubic-bezier(.34,1.3,.4,1);z-index:3}
-.pRow{display:grid;grid-template-columns:auto 1fr auto auto;gap:9px;align-items:center;background:rgba(255,255,255,.75);border:1px solid rgba(139,117,215,.12);border-radius:16px;padding:8px 10px;margin-bottom:7px}
+.pRow{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;background:rgba(255,255,255,.75);border:1px solid rgba(139,117,215,.12);border-radius:14px;padding:5px 8px;margin-bottom:5px}
 .pRow.me{outline:3px solid #ffd976}
 .pRow.busted{animation:shake .5s ease}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
-.avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.avatar{width:30px;height:30px;font-size:13px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .chip{font-size:11px;font-weight:900;padding:4px 8px;border-radius:99px;background:#f1ebff;color:#6a58a8;white-space:nowrap}
 .chip.wake{background:#e2f5ec;color:#2e8b62}.chip.sleep{background:#f7e7ff;color:#a264bd}.chip.bust{background:#ffe3e7;color:#bd5964}.chip.wait{background:#f3f0f7;color:#9a8fae}
 .choiceFlip{display:inline-block;animation:flipIn .6s cubic-bezier(.2,1.4,.4,1) both}
@@ -69,8 +70,29 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 .voteBtn.wake{background:linear-gradient(160deg,#e9fbf5,#d8f4e9);color:#2e8b62}
 .voteBtn.sleep{background:linear-gradient(160deg,#fff0f6,#f7e7ff);color:#a264bd}
 .voteBtn .big{display:block;font-size:38px;margin-bottom:6px}
-.flipCard{width:min(240px,70vw);margin:10px auto;perspective:900px}
-.napGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.flipCard{width:min(190px,58vw);margin:8px auto;perspective:900px}
+.drawCard{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.drawInner{position:relative;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.3,1.25,.4,1)}
+.drawCard.drawn .drawInner{transform:rotateY(180deg)}
+.dface{backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;overflow:hidden}
+.dface.front{position:absolute;inset:0;transform:rotateY(180deg)}
+.dface.front img{width:100%;height:100%;object-fit:cover;display:block}
+.cardBack{aspect-ratio:182/284;display:grid;place-items:center;background:linear-gradient(160deg,#43548a,#655576);color:#fff;font-weight:900;font-size:15px;border:3px solid #fff;box-shadow:0 10px 24px rgba(58,44,80,.25);text-align:center;padding:8px}
+.drawCard:not(.drawn):hover .drawInner{transform:rotateY(14deg)}
+.gainBig img{box-shadow:0 0 0 3px #ffd976,0 14px 34px rgba(230,180,60,.45)!important}
+.gainZero img{filter:grayscale(.75) brightness(.92)}
+@keyframes sparklePop{from{transform:scale(1)}to{transform:scale(1.045)}}
+.gainBig{animation:sparklePop .45s ease infinite alternate}
+.eventDanger{animation:shake .55s ease}
+.tapHint{font-size:11px;color:#a264bd;font-weight:900;animation:pulse .7s ease infinite alternate}
+.storyImg{width:min(290px,78vw);border-radius:18px;box-shadow:0 14px 34px rgba(58,44,80,.28);display:block;margin:4px auto 12px}
+.storyScene{animation:storyIn .45s ease both}
+@keyframes storyIn{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:translateX(0)}}
+.storyText{font-size:16.5px;font-weight:700;line-height:1.75;text-align:center;min-height:84px}
+.storyDots{text-align:center;margin:8px 0 2px}
+.storyDots span{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e2d8f5;margin:0 4px}
+.storyDots span.on{background:#8b75d7}
+.napGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:9px}
 .napGrid .flipCard{width:100%;margin:6px auto 2px}
 .flipInner{position:relative;transform-style:preserve-3d;animation:cardFlip .8s cubic-bezier(.3,1.3,.4,1) both}
 @keyframes cardFlip{from{transform:rotateY(180deg) scale(.7);opacity:0}to{transform:rotateY(0) scale(1);opacity:1}}
@@ -85,7 +107,7 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 .confetti{position:fixed;top:-12px;width:9px;height:15px;z-index:99;border-radius:2px;animation:fall linear both;pointer-events:none}
 @keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
 .scoreNums{text-align:center;min-width:54px}
-.scoreNums .n{font-size:19px;font-weight:950;line-height:1.1}
+.scoreNums .n{font-size:16px;font-weight:950;line-height:1.1}
 .scoreNums .lab{font-size:10px;color:var(--muted);font-weight:700}
 .standStrip{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 .standChip{background:#fff;border:1px solid var(--line);border-radius:11px;padding:4px 8px;font-size:11.5px;font-weight:700}
@@ -119,6 +141,8 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
       </div>
       <div style="height:8px"></div>
       <button id="btnLocal" class="btn ghost">この端末だけで遊ぶ（パス＆プレイ）</button>
+      <div style="height:8px"></div>
+      <button id="btnStory" class="btn ghost">ストーリー導入を見る</button>
       <div id="netWarn" class="small hidden" style="margin-top:8px;color:#bd5964">オンライン用の読み込みに失敗したため、いまは「この端末だけで遊ぶ」だけ使えます。</div>
     </div>
     <div class="panel small">
@@ -212,7 +236,7 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="core.js?v=20261117c"></script>
-<script src="app.js?v=20261117c"></script>
+<script src="core.js?v=20261117e"></script>
+<script src="app.js?v=20261117e"></script>
 </body>
 </html>

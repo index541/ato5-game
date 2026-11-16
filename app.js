@@ -3,7 +3,7 @@
 const Core = window.Ato5Core;
 const $ = id => document.getElementById(id);
 const BOT_NAMES = ['ボット・すや', 'ボット・ねむ', 'ボット・ゆめ', 'ボット・まど', 'ボット・こま'];
-const PHASE_LABEL = { lobby: 'ロビー', choice: '選択中', reveal: '公開！', nap: '二度寝', event: 'ハプニング', eventConfirm: 'ハプニング', roundEnd: 'ラウンド終了', gameEnd: '結果発表' };
+const PHASE_LABEL = { lobby: 'ロビー', check: '確認', choice: '選択中', reveal: '公開！', napDraw: '二度寝カード', event: 'ハプニング', eventConfirm: 'ハプニング', roundEnd: 'ラウンド終了', gameEnd: '結果発表' };
 
 let mode = null;            // 'local' | 'host' | 'guest'
 let game = null;            // host/local の実体
@@ -79,7 +79,7 @@ function render() {
   const v = view;
   $('hudRound').textContent = v.round;
   $('hudBase').textContent = (v.phase === 'choice' || v.phase === 'reveal') && v.currentBp == null ? '―' : (v.currentBp == null ? '―' : v.currentBp);
-  if (v.phase === 'reveal' || v.phase === 'nap' || v.phase === 'event' || v.phase === 'eventConfirm') $('hudBase').textContent = v.currentBp;
+  if (v.phase === 'reveal' || v.phase === 'napDraw' || v.phase === 'event' || v.phase === 'eventConfirm') $('hudBase').textContent = v.currentBp;
   $('hudPhase').textContent = PHASE_LABEL[v.phase] || v.phase;
   $('tNow').textContent = Core.fmt(v.now);
   $('tDead').textContent = Core.fmt(v.deadline);
@@ -167,7 +167,14 @@ function renderMyArea() {
   if (mode === 'guest' || mode === 'host') {
     const me = v.players[myPlayerId];
     if (!me) { area.innerHTML = ''; return; }
-    if (v.phase === 'choice' && me.status === 'sleeping' && !me.hasChosen) {
+    if (v.phase === 'check' && me.status === 'sleeping' && !me.hasReady) {
+      area.innerHTML = '<b>時間とポイントの確認</b>' + standingsStrip(v) +
+        '<div class="small" style="margin:6px 0">今 ' + Core.fmt(v.now) + ' ／ 締切 ' + Core.fmt(v.deadline) + '（あと' + (v.deadline - v.now) + '分）</div>' +
+        '<button class="btn main" id="myReady">確認した（次へ）</button>';
+      $('myReady').onclick = () => sendMyReady();
+    } else if (v.phase === 'check' && me.status === 'sleeping') {
+      area.innerHTML = '<div class="small">確認済みです。全員が確認するのを待っています…</div>';
+    } else if (v.phase === 'choice' && me.status === 'sleeping' && !me.hasChosen) {
       area.innerHTML = '<b>あなたの番です</b>' + standingsStrip(v) + '<div class="voteBig">' +
         '<button class="voteBtn wake" id="myWake"><span class="big">☀</span>起きる</button>' +
         '<button class="voteBtn sleep" id="mySleep"><span class="big">☾</span>あと5分</button></div>' +
@@ -203,8 +210,21 @@ function wireStageNext() {
 }
 function renderStage() {
   const v = view; if (!v) return;
+  if (introOpen) return;
   const panel = $('stagePanel'), stage = $('stage');
-  if (v.phase === 'reveal') {
+  if (v.phase === 'check') {
+    closeOverlay();
+    panel.classList.remove('hidden');
+    const sleepers = v.players.filter(p => p.status === 'sleeping');
+    stage.innerHTML = '<div style="text-align:center"><b style="font-size:19px">ターン' + v.turn + ' の確認</b>' +
+      '<div class="small">今 <b>' + Core.fmt(v.now) + '</b> ／ 締切 <b>' + Core.fmt(v.deadline) + '</b>（あと' + (v.deadline - v.now) + '分）</div></div>' +
+      standingsStrip(v) +
+      '<div class="standStrip">' + sleepers.map(p => '<span class="standChip">' + esc(p.name) + ': ' + (p.hasReady ? '確認した ✓' : '確認中…') + '</span>').join('') + '</div>' +
+      (mode === 'local' ? '<button class="btn main" id="checkNext" style="margin-top:10px">全員確認した（次へ）</button>' : '') +
+      (mode === 'host' ? '<button class="btn ghost" id="forceReady" style="margin-top:8px">全員分を進める（ホスト用）</button>' : '');
+    if (mode === 'local') $('checkNext').onclick = () => { game.sleeping().forEach(p => game.submitReady(p.id)); syncFromGame(); };
+    if (mode === 'host') $('forceReady').onclick = () => { game.sleeping().forEach(p => { if (!p.hasReady) game.submitReady(p.id); }); syncFromGame(); };
+  } else if (v.phase === 'reveal') {
     closeOverlay();
     const slept = v.players.filter(p => p.choice === 'sleep').length;
     panel.classList.remove('hidden');
@@ -215,27 +235,47 @@ function renderStage() {
         const c = p.choice === 'wake' ? '<span class="chip wake choiceFlip" style="animation-delay:' + (i * 0.3) + 's">☀ 起きる</span>'
           : p.choice === 'sleep' ? '<span class="chip sleep choiceFlip" style="animation-delay:' + (i * 0.3) + 's">☾ あと5分</span>' : '<span class="chip wait">―</span>';
         return '<div class="revealCell"><div class="avatar" style="background:' + p.color + ';margin:auto">' + (p.id + 1) + '</div><b>' + esc(p.name) + '</b><div style="margin-top:6px">' + c + '</div></div>';
-      }).join('') + '</div>' + stageNextBtn();
-    wireStageNext();
-  } else if (v.phase === 'nap') {
+      }).join('') + '</div>';
+  } else if (v.phase === 'napDraw') {
     closeOverlay();
     panel.classList.remove('hidden');
-    stage.innerHTML = '<div style="text-align:center"><b style="font-size:20px">二度寝カード</b><div class="small">1枚ずつめくれます。よく確認してください</div></div>' +
-      '<div class="napGrid">' + v.pendingNaps.map((x, i) => {
+    stage.innerHTML = '<div style="text-align:center"><b style="font-size:19px">二度寝カードを引こう</b><div class="small">自分のカードをタップしてめくってください</div></div>' +
+      '<div class="napGrid">' + v.pendingNaps.map(x => {
         const p = v.players[x.playerId];
-        return '<div style="text-align:center"><b>' + esc(p.name) + '</b><div><span class="chip sleep">基本' + x.bp + '点 ＋ 補正' + (x.card.bonus >= 0 ? '+' : '') + x.card.bonus + ' → <b>' + x.gain + '点</b></span></div>' +
-          '<div class="flipCard"><div class="flipInner" style="animation-delay:' + (0.4 + i * 1.1) + 's"><img src="' + x.card.img + '" alt="' + esc(x.card.name) + '"></div></div></div>';
-      }).join('') + '</div>' + stageNextBtn();
-    wireStageNext();
+        const mine = mode === 'local' || x.playerId === myPlayerId;
+        const gainCls = x.drawn ? (x.gain >= 4 ? ' gainBig' : x.gain === 0 ? ' gainZero' : '') : '';
+        const gainTxt = x.gain >= 4 ? '大当たり！' : x.gain === 0 ? '残念…0点' : '+' + x.gain + '点';
+        return '<div style="text-align:center"><b>' + esc(p.name) + '</b>' +
+          '<div class="drawCard' + (x.drawn ? ' drawn' : '') + gainCls + '" data-draw="' + x.playerId + '">' +
+          '<div class="drawInner">' +
+          '<div class="dface cardBack">あと5分だけ…<br>二度寝カード</div>' +
+          '<div class="dface front"><img src="' + x.card.img + '" alt="' + esc(x.card.name) + '"></div>' +
+          '</div></div>' +
+          (x.drawn ? '<span class="chip sleep">基本' + x.bp + ' ＋ 補正' + (x.card.bonus >= 0 ? '+' : '') + x.card.bonus + ' → <b>' + gainTxt + '</b></span>'
+                   : (mine ? '<div class="tapHint">タップして引く</div>' : '<div class="small">引くのを待っています…</div>')) +
+          '</div>';
+      }).join('') + '</div>';
+    stage.querySelectorAll('[data-draw]').forEach(el => {
+      el.onclick = () => {
+        const pid = parseInt(el.dataset.draw, 10);
+        if (mode === 'local') markDrawnAndSync(pid);
+        else if (mode === 'host') { if (pid === myPlayerId) markDrawnAndSync(pid); }
+        else if (mode === 'guest') { if (pid === myPlayerId) sendNapDraw(); }
+      };
+    });
   } else if (v.phase === 'eventConfirm' && v.lastEvent) {
-    closeOverlay();
     const e = v.lastEvent;
+    closeOverlay();
     panel.classList.remove('hidden');
-    stage.innerHTML = '<div style="text-align:center"><b style="font-size:20px">登校ハプニング！</b>' +
-      '<div style="font-size:26px;font-weight:950;color:' + (e.delta > 0 ? '#2e8b62' : '#d76f94') + ';margin-top:6px">最終出発 ' + (e.delta > 0 ? '+' : '') + e.delta + '分</div></div>' +
+    const gapAfter = v.deadline - (v.now + 5);
+    const busted = v.players.some(p => p.status === 'sleeping') && v.now + 5 > v.deadline;
+    const tier = busted ? 2 : gapAfter <= 10 ? 1 : 0;
+    const tierTxt = tier === 2 ? 'このあと時刻が進むと、寝ている人は遅刻です…' : tier === 1 ? '締切まであと' + gapAfter + '分。かなり際どい！' : '締切まであと' + gapAfter + '分。まだ余裕あり';
+    const tierStyle = tier === 2 ? 'background:#ffe3e7;color:#bd5964' : tier === 1 ? 'background:#fff3d6;color:#96741d' : 'background:#e2f5ec;color:#2e8b62';
+    stage.innerHTML = '<div class="' + (tier === 2 ? 'eventDanger' : '') + '"><div style="text-align:center"><b style="font-size:19px">登校ハプニング！</b>' +
+      '<div style="font-size:25px;font-weight:950;color:' + (e.delta > 0 ? '#2e8b62' : '#d76f94') + ';margin-top:4px">最終出発 ' + (e.delta > 0 ? '+' : '') + e.delta + '分</div></div>' +
       '<div class="flipCard"><div class="flipInner"><img src="' + e.img + '" alt="' + esc(e.name) + '"></div></div>' +
-      '<div class="small" style="text-align:center">次へ進むと、時刻が5分進みます</div>' + stageNextBtn();
-    wireStageNext();
+      '<div style="text-align:center;font-weight:900;padding:7px 10px;border-radius:12px;' + tierStyle + '">' + tierTxt + '</div></div>';
   } else if (v.phase === 'roundEnd') {
     closeOverlay();
     panel.classList.remove('hidden');
@@ -276,24 +316,49 @@ function syncFromGame() {
 function onPhaseEntered() {
   if (!game) return;
   const key = game.round + '-' + game.turn + '-' + game.phase;
-  if (game.phase === 'choice') {
+  if (game.phase === 'check') {
+    if (enteredKey !== key) {
+      enteredKey = key;
+      game.sleeping().filter(p => (p.isBot || !p.connected) && !p.hasReady).forEach((p, i) => {
+        setTimeout(() => submitReadyAndSync(p.id), 700 + i * 600 + Math.random() * 400);
+      });
+    }
+  } else if (game.phase === 'choice') {
     if (enteredKey !== key) { enteredKey = key; runChoiceCollection(); }
-  } else if (game.phase === 'reveal') scheduleAdvance(6000);
-  else if (game.phase === 'nap') scheduleAdvance(6000 + game.pendingNaps.length * 3000);
+  } else if (game.phase === 'reveal') scheduleAdvance(5000);
+  else if (game.phase === 'napDraw') {
+    game.pendingNaps.filter(x => !x.drawn).forEach(x => {
+      const p = game.players[x.playerId];
+      if (p.isBot || !p.connected) setTimeout(() => markDrawnAndSync(x.playerId), 1000 + Math.random() * 1500);
+    });
+  }
   else if (game.phase === 'event') scheduleAdvance(1200);
-  else if (game.phase === 'eventConfirm') scheduleAdvance(9000);
+  else if (game.phase === 'eventConfirm') scheduleAdvance(7000);
   else if (game.phase === 'roundEnd') scheduleAdvance(8000);
 }
 function scheduleAdvance(ms) { clearTimeout(orchestrateTimer); orchestrateTimer = setTimeout(advanceFromPhase, ms); }
 function advanceFromPhase() {
   if (!game) return;
   if (game.phase === 'reveal') game.resolveReveal();
-  else if (game.phase === 'nap') game.applyNaps();
+  else if (game.phase === 'napDraw') { if (game.pendingNaps.every(n => n.drawn)) game.applyNaps(); else return; }
   else if (game.phase === 'event') game.drawEvent();
   else if (game.phase === 'eventConfirm') game.confirmEvent();
   else if (game.phase === 'roundEnd') game.nextRound();
   else return;
   syncFromGame();
+}
+function submitReadyAndSync(id) {
+  if (!game || game.phase !== 'check') return;
+  game.submitReady(id);
+  syncFromGame();
+}
+function markDrawnAndSync(id) {
+  if (!game || game.phase !== 'napDraw') return;
+  const done = game.markNapDrawn(id);
+  syncFromGame();
+  if (done) setTimeout(() => {
+    if (game && game.phase === 'napDraw') { game.applyNaps(); syncFromGame(); }
+  }, 2100);
 }
 function submitAndSync(id, choice) {
   if (!game || game.phase !== 'choice') return;
@@ -335,6 +400,16 @@ function nextPass() {
 }
 
 /* ---------- 自分の選択（オンライン） ---------- */
+function sendMyReady() {
+  if (mode === 'host') submitReadyAndSync(myPlayerId);
+  else if (mode === 'guest' && guestConn && guestConn.open) {
+    guestConn.send({ type: 'ready' });
+    $('myArea').innerHTML = '<div class="small">確認を送りました。全員が確認するのを待っています…</div>';
+  }
+}
+function sendNapDraw() {
+  if (mode === 'guest' && guestConn && guestConn.open) guestConn.send({ type: 'napDraw' });
+}
 function sendMyChoice(choice) {
   if (mode === 'host') submitAndSync(myPlayerId, choice);
   else if (mode === 'guest' && guestConn && guestConn.open) {
@@ -342,6 +417,32 @@ function sendMyChoice(choice) {
     $('myArea').innerHTML = '<div class="small">送信しました。公開を待っています…</div>';
   }
 }
+
+/* ---------- ストーリー導入（スキップ可） ---------- */
+let introOpen = false;
+const STORY = [
+  { img: 'assets/nap_02.png', text: '朝7時30分。学校があるのは分かっているのに、布団が最高すぎて出られない…' },
+  { img: 'assets/event_09.png', text: '最終出発は8時25分ちょうど。それを1分でも過ぎたら遅刻で、そのラウンドは0点になってしまう。' },
+  { img: 'assets/nap_00.png', text: '「あと5分だけ…」と寝続ければ、二度寝カードで得点が伸びる。ただし寝る人が少ないほど基本点は高い。たった1人なら3点だ。' },
+  { img: 'assets/event_00.png', text: '起きるか寝るかは、全員同時に・秘密に決める。読み合いを制して、3ラウンド合計点で勝とう！' }
+];
+function showIntro() {
+  introOpen = true;
+  let i = 0;
+  const draw = () => {
+    const sc = STORY[i];
+    overlay('<div class="storyScene"><div style="text-align:right"><button class="btn ghost" id="storySkip" style="width:auto;min-height:38px;padding:6px 14px">スキップ ≫</button></div>' +
+      '<img class="storyImg" src="' + sc.img + '" alt="">' +
+      '<div class="storyText">' + sc.text + '</div>' +
+      '<div class="storyDots">' + STORY.map((_, j) => '<span class="' + (j === i ? 'on' : '') + '"></span>').join('') + '</div>' +
+      '<button class="btn main" id="storyNext" style="margin-top:10px">' + (i === STORY.length - 1 ? 'ゲームをはじめる' : '次へ') + '</button></div>');
+    $('storySkip').onclick = endIntro;
+    $('storyNext').onclick = () => { if (i < STORY.length - 1) { i++; draw(); } else endIntro(); };
+  };
+  draw();
+}
+function endIntro() { introOpen = false; closeOverlay(); if (view) render(); }
+$('btnStory').onclick = () => showIntro();
 
 /* ---------- ローカルモード ---------- */
 function buildLocalNames() {
@@ -366,6 +467,7 @@ $('btnLocalStart').onclick = () => {
   game = new Core.Game(players);
   game.startGame();
   show('scr-game');
+  showIntro();
   enteredKey = '';
   syncFromGame();
 };
@@ -435,6 +537,12 @@ $('btnCreate').onclick = () => {
       } else if (msg.type === 'choice' && game) {
         const rec = hostConns.get(conn.peer);
         if (rec) submitAndSync(rec.rosterIdx, msg.choice);
+      } else if (msg.type === 'ready' && game) {
+        const rec = hostConns.get(conn.peer);
+        if (rec) submitReadyAndSync(rec.rosterIdx);
+      } else if (msg.type === 'napDraw' && game) {
+        const rec = hostConns.get(conn.peer);
+        if (rec) markDrawnAndSync(rec.rosterIdx);
       }
     });
     conn.on('close', () => {
@@ -462,6 +570,7 @@ $('btnStartGame').onclick = () => {
   game.startGame();
   broadcast({ type: 'start' });
   show('scr-game');
+  showIntro();
   enteredKey = '';
   syncFromGame();
 };
@@ -492,7 +601,7 @@ function doJoin(code, name) {
         $('joinUrlTxt').textContent = '参加できました。ホストの開始を待っています';
         renderLobby();
       } else if (msg.type === 'lobby') { guestRoster = msg.roster; renderLobby(); }
-      else if (msg.type === 'start') { show('scr-game'); }
+      else if (msg.type === 'start') { show('scr-game'); showIntro(); }
       else if (msg.type === 'state') { view = msg.view; if ($('scr-game').classList.contains('hidden')) show('scr-game'); render(); }
       else if (msg.type === 'error') { st(msg.message); }
     });

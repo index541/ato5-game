@@ -30,11 +30,11 @@
       this.players = players.map((p, i) => ({
         id: i, name: p.name || ('P' + (i + 1)), isBot: !!p.isBot, connected: true,
         color: COLORS[i], status: 'sleeping', score: 0, final: null,
-        choice: null, hasChosen: false, lastNap: null, lastGain: null,
+        choice: null, hasChosen: false, hasReady: false, lastNap: null, lastGain: null,
         roundScores: [null, null, null], total: 0
       }));
       this.round = 1; this.turn = 1;
-      this.phase = 'lobby'; // lobby|choice|reveal|nap|event|eventConfirm|roundEnd|gameEnd
+      this.phase = 'lobby'; // lobby|check|choice|reveal|napDraw|event|eventConfirm|roundEnd|gameEnd
       this.logs = [];
       this.resetRound();
     }
@@ -43,11 +43,26 @@
       this.eventDeck = shuffled(EVENTS, this.rnd); this.ei = 0;
       this.napDeck = shuffled(NAPS, this.rnd); this.ni = 0;
       this.lastEvent = null; this.pendingNaps = []; this.currentBp = null;
-      this.players.forEach(p => { p.status = 'sleeping'; p.score = 0; p.final = null; p.choice = null; p.hasChosen = false; p.lastNap = null; p.lastGain = null; });
+      this.players.forEach(p => { p.status = 'sleeping'; p.score = 0; p.final = null; p.choice = null; p.hasChosen = false; p.hasReady = false; p.lastNap = null; p.lastGain = null; });
     }
     log(t) { this.logs.unshift('[R' + this.round + '] ' + t); if (this.logs.length > 60) this.logs.pop(); }
     sleeping() { return this.players.filter(p => p.status === 'sleeping'); }
-    startGame() { this.resetRound(); this.round = 1; this.turn = 1; this.phase = 'choice'; this.log('第1ラウンド開始'); }
+    startGame() { this.resetRound(); this.round = 1; this.turn = 1; this.beginCheck(); this.log('第1ラウンド開始'); }
+    beginCheck() {
+      this.phase = 'check';
+      this.players.forEach(p => { p.hasReady = false; p.choice = null; p.hasChosen = false; });
+    }
+    submitReady(id) {
+      if (this.phase !== 'check') return false;
+      const p = this.players[id];
+      if (!p || p.status !== 'sleeping') return false;
+      p.hasReady = true;
+      if (this.sleeping().every(q => q.hasReady)) {
+        this.players.forEach(q => { q.hasReady = false; });
+        this.phase = 'choice';
+      }
+      return true;
+    }
     drawEventCard() { if (this.ei >= this.eventDeck.length) { this.eventDeck = shuffled(EVENTS, this.rnd); this.ei = 0; } return this.eventDeck[this.ei++]; }
     drawNapCard() { if (this.ni >= this.napDeck.length) { this.napDeck = shuffled(NAPS, this.rnd); this.ni = 0; } return this.napDeck[this.ni++]; }
 
@@ -74,13 +89,21 @@
       this.sleeping().filter(p => p.choice === 'sleep').forEach(p => {
         const card = this.drawNapCard();
         const gain = Math.max(0, this.currentBp + card.bonus);
-        this.pendingNaps.push({ playerId: p.id, card, gain, bp: this.currentBp });
+        this.pendingNaps.push({ playerId: p.id, card, gain, bp: this.currentBp, drawn: false });
       });
-      if (this.pendingNaps.length) { this.phase = 'nap'; }
+      if (this.pendingNaps.length) { this.phase = 'napDraw'; }
       else this.afterScoring();
     }
+    markNapDrawn(id) {
+      if (this.phase !== 'napDraw') return false;
+      const x = this.pendingNaps.find(n => n.playerId === id);
+      if (!x || x.drawn) return false;
+      x.drawn = true;
+      return this.pendingNaps.every(n => n.drawn);
+    }
     applyNaps() {
-      if (this.phase !== 'nap') return;
+      if (this.phase !== 'napDraw') return;
+      if (!this.pendingNaps.every(n => n.drawn)) return;
       this.pendingNaps.forEach(x => {
         const p = this.players[x.playerId];
         p.score += x.gain; p.lastNap = x.card; p.lastGain = x.gain;
@@ -108,9 +131,8 @@
       if (this.now > this.deadline) {
         this.sleeping().forEach(p => { p.status = 'bust'; p.score = 0; p.final = 0; this.log(p.name + ' 遅刻で0点'); });
       }
-      this.players.forEach(p => { p.choice = null; p.hasChosen = false; });
       if (this.sleeping().length === 0) { this.finishRound(); return; }
-      this.turn++; this.phase = 'choice';
+      this.turn++; this.beginCheck();
     }
     finishRound() {
       this.players.forEach(p => {
@@ -122,7 +144,7 @@
     }
     nextRound() {
       if (this.phase !== 'roundEnd') return;
-      this.round++; this.turn = 1; this.resetRound(); this.phase = 'choice';
+      this.round++; this.turn = 1; this.resetRound(); this.beginCheck();
       this.log('第' + this.round + 'ラウンド開始');
     }
     /* ボットの選択: 締切までの余裕で判断 */
@@ -141,12 +163,12 @@
       return {
         round: this.round, turn: this.turn, phase: this.phase,
         now: this.now, deadline: this.deadline, currentBp: this.currentBp,
-        lastEvent: this.lastEvent, pendingNaps: this.phase === 'nap' || this.phase === 'event' || this.phase === 'eventConfirm' ? this.pendingNaps : [],
+        lastEvent: this.lastEvent, pendingNaps: this.phase === 'napDraw' || this.phase === 'event' || this.phase === 'eventConfirm' ? this.pendingNaps : [],
         logs: this.logs.slice(0, 12),
         players: this.players.map(p => ({
           id: p.id, name: p.name, isBot: p.isBot, connected: p.connected, color: p.color,
           status: p.status, score: p.status === 'bust' ? 0 : (p.final != null && p.status === 'safe' ? p.final : p.score),
-          hasChosen: p.hasChosen, choice: hideChoices ? null : p.choice,
+          hasChosen: p.hasChosen, hasReady: p.hasReady, choice: hideChoices ? null : p.choice,
           lastNap: p.lastNap, lastGain: p.lastGain,
           roundScores: p.roundScores, total: p.total
         }))

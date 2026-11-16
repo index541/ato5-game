@@ -428,7 +428,7 @@ $('btnStartGame').onclick = () => {
 function doJoin(code, name) {
   if (typeof Peer === 'undefined') { $('joinStatus').textContent = 'オンライン機能を読み込めませんでした'; return; }
   mode = 'guest';
-  const st = m => { $('joinStatus').textContent = m; };
+  const st = m => { const el = $('joinStatus'); if (el) el.textContent = m; $('btnJoin').textContent = m; };
   st('接続しています…');
   let welcomed = false;
   peer = new Peer();

@@ -426,14 +426,21 @@ $('btnStartGame').onclick = () => {
 
 /* ---------- ゲスト ---------- */
 function doJoin(code, name) {
-  if (typeof Peer === 'undefined') { alert('オンライン機能を読み込めませんでした'); return; }
+  if (typeof Peer === 'undefined') { $('joinStatus').textContent = 'オンライン機能を読み込めませんでした'; return; }
   mode = 'guest';
+  const st = m => { $('joinStatus').textContent = m; };
+  st('接続しています…');
+  let welcomed = false;
   peer = new Peer();
+  const timer = setTimeout(() => { if (!welcomed) st('接続できませんでした。ホストの画面が開いたままになっているか、部屋コードが合っているか確認してください'); }, 15000);
   peer.on('open', () => {
+    st('部屋に接続しています…');
     guestConn = peer.connect(PEER_PREFIX + code, { reliable: true });
-    guestConn.on('open', () => guestConn.send({ type: 'join', name }));
+    guestConn.on('open', () => { st('入室しています…'); guestConn.send({ type: 'join', name }); });
+    guestConn.on('error', e => { st('接続でエラーが出ました。もう一度お試しください'); console.warn(e); });
     guestConn.on('data', msg => {
       if (msg.type === 'welcome') {
+        welcomed = true; clearTimeout(timer);
         myPlayerId = msg.playerId; guestRoster = msg.roster;
         show('scr-lobby');
         $('hostLobbyBtns').classList.add('hidden');
@@ -445,11 +452,15 @@ function doJoin(code, name) {
       } else if (msg.type === 'lobby') { guestRoster = msg.roster; renderLobby(); }
       else if (msg.type === 'start') { show('scr-game'); }
       else if (msg.type === 'state') { view = msg.view; if ($('scr-game').classList.contains('hidden')) show('scr-game'); render(); }
-      else if (msg.type === 'error') { alert(msg.message); }
+      else if (msg.type === 'error') { st(msg.message); }
     });
-    guestConn.on('close', () => { alert('ホストとの接続が切れました'); });
+    guestConn.on('close', () => { if (welcomed) alert('ホストとの接続が切れました'); });
   });
-  peer.on('error', e => { alert('接続できませんでした。部屋コードを確認してください'); console.warn(e); });
+  peer.on('error', e => {
+    clearTimeout(timer);
+    st(e && e.type === 'peer-unavailable' ? '部屋が見つかりませんでした。ホストの画面が開いたままか確認してください' : '接続できませんでした。通信環境と部屋コードを確認してください');
+    console.warn(e);
+  });
 }
 $('btnShowJoin').onclick = () => $('joinBox').classList.toggle('hidden');
 $('btnJoin').onclick = () => {

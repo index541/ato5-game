@@ -357,13 +357,20 @@ function renderStage() {
         drawnFxDone.add(k);
         const card = stage.querySelector('[data-draw="' + x.playerId + '"]');
         if (card) {
-          if (x.gain >= 1) burst(card, x.gain >= 4 ? 16 : 9, x.gain >= 4 ? ['#ffb02e', '#ffd76e', '#ff8a5c'] : ['#b18fe8', '#8b75d7', '#e5d9f4']);
-          if (x.gain >= 3) {
-            const gp = document.createElement('div');
-            gp.className = 'gainPop'; gp.textContent = '+' + x.gain;
-            card.appendChild(gp);
-            setTimeout(() => gp.remove(), 1250);
-          }
+          card.classList.remove('drawn');
+          void card.offsetWidth;
+          const flipIt = () => card.classList.add('drawn');
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(flipIt));
+          else setTimeout(flipIt, 40);
+          setTimeout(() => {
+            if (x.gain >= 1) burst(card, x.gain >= 4 ? 16 : 9, x.gain >= 4 ? ['#ffb02e', '#ffd76e', '#ff8a5c'] : ['#b18fe8', '#8b75d7', '#e5d9f4']);
+            if (x.gain >= 3) {
+              const gp = document.createElement('div');
+              gp.className = 'gainPop'; gp.textContent = '+' + x.gain;
+              card.appendChild(gp);
+              setTimeout(() => gp.remove(), 1250);
+            }
+          }, 520);
         }
       }
     });
@@ -378,18 +385,23 @@ function renderStage() {
     const tierStyle = tier === 2 ? 'background:#ffe3e7;color:#bd5964' : tier === 1 ? 'background:#fff3d6;color:#96741d' : 'background:#e2f5ec;color:#2e8b62';
     stage.innerHTML = '<div class="' + (tier === 2 ? 'eventDanger' : '') + '"><div style="text-align:center"><b style="font-size:19px">登校ハプニング！</b>' +
       '<div style="font-size:25px;font-weight:950;color:' + (e.delta > 0 ? '#2e8b62' : '#d76f94') + ';margin-top:4px">最終出発 ' + (e.delta > 0 ? '+' : '') + e.delta + '分</div></div>' +
-      '<div class="flipCard"><div class="flipInner"><img src="' + e.img + '" alt="' + esc(e.name) + '"></div></div>' +
+      '<div class="flipCard"><div class="flipInner"><div class="dface cardBack">あと5分だけ…<br>ハプニングカード</div><div class="dface front"><img src="' + e.img + '" alt="' + esc(e.name) + '"></div></div></div>' +
       '<div style="text-align:center;font-weight:900;padding:7px 10px;border-radius:12px;' + tierStyle + '">' + tierTxt + '</div></div>';
     const evKey = v.round + '-' + v.turn + '-ev';
     if (lastEventFx !== evKey) {
       lastEventFx = evKey;
       const card = stage.querySelector('.flipCard');
       if (card) {
-        card.style.setProperty('--sh', tier === 2 ? '14px' : tier === 1 ? '8px' : '4px');
-        card.classList.add('impactShake');
-        if (e.delta > 0) burst(card, 10, ['#7cc7a0', '#a8e6c3', '#2e8b62']);
+        const flipIt = () => card.classList.add('flipped');
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(flipIt, 260)));
+        else setTimeout(flipIt, 300);
+        setTimeout(() => {
+          card.style.setProperty('--sh', tier === 2 ? '14px' : tier === 1 ? '8px' : '4px');
+          card.classList.add('impactShake');
+          if (e.delta > 0) burst(card, 10, ['#7cc7a0', '#a8e6c3', '#2e8b62']);
+          flashFx(tier === 2 ? '#ef5d7d' : (e.delta > 0 ? '#7cc7a0' : '#f2b25c'));
+        }, 1080);
       }
-      flashFx(tier === 2 ? '#ef5d7d' : (e.delta > 0 ? '#7cc7a0' : '#f2b25c'));
     }
   } else if (v.phase === 'roundEnd') {
     closeOverlay();
@@ -415,7 +427,7 @@ function renderStage() {
       const b = document.createElement('div');
       b.className = 'phaseBanner'; b.textContent = bp;
       stage.appendChild(b);
-      setTimeout(() => b.remove(), 1150);
+      setTimeout(() => b.remove(), 2500);
     }
   }
 }
@@ -604,6 +616,7 @@ $('btnLocalStart').onclick = () => {
   myPlayerId = -1;
   mode = 'local';
   game = new Core.Game(players);
+  drawnFxDone.clear(); lastEventFx = '';
   game.startGame();
   show('scr-game');
   showIntro();
@@ -706,6 +719,7 @@ $('btnStartGame').onclick = () => {
   if (roster.length < 2) { $('lobbyErr').textContent = '2人以上で開始できます。ボット追加もできます'; return; }
   $('lobbyErr').textContent = '';
   game = new Core.Game(roster.map(r => ({ name: r.name, isBot: r.isBot })));
+  drawnFxDone.clear(); lastEventFx = '';
   game.startGame();
   broadcast({ type: 'start' });
   show('scr-game');
@@ -740,7 +754,7 @@ function doJoin(code, name) {
         $('joinUrlTxt').textContent = '参加できました。ホストの開始を待っています';
         renderLobby();
       } else if (msg.type === 'lobby') { guestRoster = msg.roster; renderLobby(); }
-      else if (msg.type === 'start') { show('scr-game'); showIntro(); }
+      else if (msg.type === 'start') { drawnFxDone.clear(); lastEventFx = ''; show('scr-game'); showIntro(); }
       else if (msg.type === 'state') { view = msg.view; if ($('scr-game').classList.contains('hidden')) show('scr-game'); render(); }
       else if (msg.type === 'error') { st(msg.message); }
     });

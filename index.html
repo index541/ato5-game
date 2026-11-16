@@ -36,7 +36,10 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 .clockBoard{display:grid;grid-template-columns:minmax(128px,180px) 1fr;gap:10px;align-items:center}
 .clockFace{position:relative;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 46%,#fff 0 62%,#f5efff 63% 100%);border:8px solid #fff;box-shadow:0 12px 35px rgba(79,61,107,.14),inset 0 0 0 2px #e5d9f4}
 .clockNum{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:900;color:#756881;z-index:2}
-.clockHand{position:absolute;left:50%;bottom:50%;width:5px;border-radius:99px;transform-origin:50% 100%;transition:transform 1s cubic-bezier(.34,1.4,.4,1);z-index:5}
+.clockHand{position:absolute;left:50%;bottom:50%;width:5px;border-radius:99px;transform-origin:50% 100%;transition:transform 1s cubic-bezier(.34,1.4,.4,1);z-index:5;box-shadow:0 0 0 1.5px #fff}
+.clockHand::after{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:inherit;border:2px solid #fff;box-shadow:0 1px 4px rgba(70,55,90,.25)}
+.clockTick{position:absolute;width:5px;height:5px;border-radius:50%;background:#ddd2f2;transform:translate(-50%,-50%);z-index:1}
+.clockTick.major{width:7px;height:7px;background:#b7a6e3}
 .clockHand.now{height:32%;background:#8d76d5;margin-left:-2.5px}
 .clockHand.deadline{height:40%;width:4px;background:#ed91ae;margin-left:-2px;z-index:4}
 .clockCenter{position:absolute;left:50%;top:50%;width:13px;height:13px;transform:translate(-50%,-50%);border-radius:50%;background:#655576;border:3px solid #fff;z-index:7}
@@ -236,7 +239,7 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="core.js?v=20261117e"></script>
-<script src="app.js?v=20261117e"></script>
+<script src="core.js?v=20261117f"></script>
+<script src="app.js?v=20261117f"></script>
 </body>
 </html>

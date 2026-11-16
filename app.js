@@ -48,12 +48,18 @@ function confetti() {
     s.textContent = Core.fmt(m);
     f.appendChild(s);
   }
+  for (let m = 435; m <= 530; m += 5) {
+    const a = ((m % 720) / 720) * Math.PI * 2;
+    const tk = document.createElement('span');
+    tk.className = 'clockTick' + (m % 30 === 0 ? ' major' : '');
+    tk.style.left = (50 + Math.sin(a) * 45.5) + '%';
+    tk.style.top = (50 - Math.cos(a) * 45.5) + '%';
+    f.appendChild(tk);
+  }
   const dn = document.createElement('div'); dn.className = 'clockHand deadline'; dn.id = 'handDead';
   const nw = document.createElement('div'); nw.className = 'clockHand now'; nw.id = 'handNow';
   const c = document.createElement('div'); c.className = 'clockCenter';
-  const tipN = document.createElement('div'); tipN.className = 'clockTip'; tipN.id = 'tipNow'; tipN.style.color = '#7963c3';
-  const tipD = document.createElement('div'); tipD.className = 'clockTip'; tipD.id = 'tipDead'; tipD.style.color = '#d76f94';
-  f.append(dn, nw, c, tipN, tipD);
+  f.append(dn, nw, c);
 })();
 (function buildScore() {
   const b = $('scoreBoard');
@@ -91,9 +97,6 @@ function render() {
   else { sb.className = 'safetyBox danger'; sb.style.background = ''; sb.style.color = ''; sb.textContent = gap <= 0 ? '今起きないと遅刻！' : 'ギリギリ！'; }
   $('handNow').style.transform = 'rotate(' + handAngle(v.now) + 'deg)';
   $('handDead').style.transform = 'rotate(' + handAngle(v.deadline) + 'deg)';
-  const pn = tipPos(v.now, 33), pd = tipPos(v.deadline, 44);
-  Object.assign($('tipNow').style, { left: pn.x + '%', top: pn.y + '%' }); $('tipNow').textContent = '今 ' + Core.fmt(v.now);
-  Object.assign($('tipDead').style, { left: pd.x + '%', top: pd.y + '%' }); $('tipDead').textContent = '締切 ' + Core.fmt(v.deadline);
 
   // 得点トークン
   const board = $('scoreBoard');

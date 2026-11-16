@@ -141,7 +141,7 @@ function render() {
   $('logBox').innerHTML = v.logs.map(l => '<div>' + esc(l) + '</div>').join('');
 
   renderMyArea();
-  renderPhaseOverlay();
+  renderStage();
   lastPhase = v.phase;
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -178,40 +178,66 @@ function renderMyArea() {
   }
 }
 
-/* フェーズ演出オーバーレイ */
-function renderPhaseOverlay() {
+/* フェーズ演出ステージ（盤面の中に表示し、時計や盤面を隠さない） */
+function stageNextBtn() {
+  if (mode === 'guest') return '<div class="small" style="text-align:center;margin-top:10px">ホストが進めるのを待っています…</div>';
+  return '<button class="btn main" id="stageNext" style="margin-top:12px">次へ進む</button>';
+}
+function wireStageNext() {
+  const b = $('stageNext');
+  if (b) b.onclick = () => { clearTimeout(orchestrateTimer); advanceFromPhase(); };
+}
+function renderStage() {
   const v = view; if (!v) return;
+  const panel = $('stagePanel'), stage = $('stage');
   if (v.phase === 'reveal') {
+    closeOverlay();
     const slept = v.players.filter(p => p.choice === 'sleep').length;
-    overlay('<div style="text-align:center"><b style="font-size:20px">一斉公開！</b>' +
+    panel.classList.remove('hidden');
+    stage.innerHTML = '<div style="text-align:center"><b style="font-size:20px">一斉公開！</b>' +
       '<div class="small">あと5分 ' + slept + '人 → 基本点 <b style="font-size:16px;color:#a264bd">' + v.currentBp + '点</b></div></div>' +
       '<div class="revealGrid">' + v.players.map((p, i) => {
         if (p.status === 'safe' && p.choice == null) return '';
-        const c = p.choice === 'wake' ? '<span class="chip wake choiceFlip" style="animation-delay:' + (i * 0.15) + 's">☀ 起きる</span>'
-          : p.choice === 'sleep' ? '<span class="chip sleep choiceFlip" style="animation-delay:' + (i * 0.15) + 's">☾ あと5分</span>' : '<span class="chip wait">―</span>';
+        const c = p.choice === 'wake' ? '<span class="chip wake choiceFlip" style="animation-delay:' + (i * 0.3) + 's">☀ 起きる</span>'
+          : p.choice === 'sleep' ? '<span class="chip sleep choiceFlip" style="animation-delay:' + (i * 0.3) + 's">☾ あと5分</span>' : '<span class="chip wait">―</span>';
         return '<div class="revealCell"><div class="avatar" style="background:' + p.color + ';margin:auto">' + (p.id + 1) + '</div><b>' + esc(p.name) + '</b><div style="margin-top:6px">' + c + '</div></div>';
-      }).join('') + '</div>');
+      }).join('') + '</div>' + stageNextBtn();
+    wireStageNext();
   } else if (v.phase === 'nap') {
-    overlay('<div style="text-align:center"><b style="font-size:20px">二度寝カード</b></div>' +
-      v.pendingNaps.map((x, i) => {
+    closeOverlay();
+    panel.classList.remove('hidden');
+    stage.innerHTML = '<div style="text-align:center"><b style="font-size:20px">二度寝カード</b><div class="small">1枚ずつめくれます。よく確認してください</div></div>' +
+      '<div class="napGrid">' + v.pendingNaps.map((x, i) => {
         const p = v.players[x.playerId];
-        return '<div style="text-align:center;margin-top:8px"><b>' + esc(p.name) + '</b> <span class="chip sleep">基本' + x.bp + '点 ＋ 補正' + (x.card.bonus >= 0 ? '+' : '') + x.card.bonus + ' → <b>' + x.gain + '点</b></span>' +
-          '<div class="flipCard"><div class="flipInner" style="animation-delay:' + (i * 0.35) + 's"><img src="' + x.card.img + '" alt="' + esc(x.card.name) + '"></div></div></div>';
-      }).join(''));
+        return '<div style="text-align:center"><b>' + esc(p.name) + '</b><div><span class="chip sleep">基本' + x.bp + '点 ＋ 補正' + (x.card.bonus >= 0 ? '+' : '') + x.card.bonus + ' → <b>' + x.gain + '点</b></span></div>' +
+          '<div class="flipCard"><div class="flipInner" style="animation-delay:' + (0.4 + i * 1.1) + 's"><img src="' + x.card.img + '" alt="' + esc(x.card.name) + '"></div></div></div>';
+      }).join('') + '</div>' + stageNextBtn();
+    wireStageNext();
   } else if (v.phase === 'eventConfirm' && v.lastEvent) {
+    closeOverlay();
     const e = v.lastEvent;
-    overlay('<div style="text-align:center"><b style="font-size:20px">登校ハプニング！</b>' +
+    panel.classList.remove('hidden');
+    stage.innerHTML = '<div style="text-align:center"><b style="font-size:20px">登校ハプニング！</b>' +
       '<div style="font-size:26px;font-weight:950;color:' + (e.delta > 0 ? '#2e8b62' : '#d76f94') + ';margin-top:6px">最終出発 ' + (e.delta > 0 ? '+' : '') + e.delta + '分</div></div>' +
       '<div class="flipCard"><div class="flipInner"><img src="' + e.img + '" alt="' + esc(e.name) + '"></div></div>' +
-      '<div class="small" style="text-align:center">時刻が5分進みます…</div>');
+      '<div class="small" style="text-align:center">次へ進むと、時刻が5分進みます</div>' + stageNextBtn();
+    wireStageNext();
   } else if (v.phase === 'roundEnd') {
-    overlay('<div style="text-align:center"><b style="font-size:20px">第' + v.round + 'ラウンド終了</b></div>' +
-      rankHtml(v, false) + '<div class="small" style="text-align:center;margin-top:8px">次のラウンドへ進みます…</div>');
-  } else if (v.phase === 'gameEnd') {
-    overlay('<div style="text-align:center"><b style="font-size:22px">最終結果</b></div>' + rankHtml(v, true));
-    if (lastPhase !== 'gameEnd') confetti();
-  } else if (v.phase === 'choice' && passCurrent == null) {
     closeOverlay();
+    panel.classList.remove('hidden');
+    stage.innerHTML = '<div style="text-align:center"><b style="font-size:20px">第' + v.round + 'ラウンド終了</b></div>' +
+      rankHtml(v, false) + stageNextBtn();
+    wireStageNext();
+  } else if (v.phase === 'gameEnd') {
+    panel.classList.add('hidden'); stage.innerHTML = '';
+    overlay('<div style="text-align:center"><b style="font-size:22px">最終結果</b></div>' + rankHtml(v, true) +
+      '<button class="btn ghost" style="margin-top:12px" onclick="document.getElementById(\'overlay\').classList.add(\'hidden\')">閉じて盤面を見る</button>');
+    if (lastPhase !== 'gameEnd') confetti();
+  } else if (v.phase === 'event') {
+    /* ハプニングを引く短い間は、直前のステージをそのまま見せる */
+  } else {
+    panel.classList.add('hidden'); stage.innerHTML = '';
+    if (v.phase === 'choice' && passCurrent == null) closeOverlay();
   }
 }
 function rankHtml(v, final) {
@@ -238,11 +264,11 @@ function onPhaseEntered() {
   const key = game.round + '-' + game.turn + '-' + game.phase;
   if (game.phase === 'choice') {
     if (enteredKey !== key) { enteredKey = key; runChoiceCollection(); }
-  } else if (game.phase === 'reveal') scheduleAdvance(3000);
-  else if (game.phase === 'nap') scheduleAdvance(2400 + game.pendingNaps.length * 1100);
-  else if (game.phase === 'event') scheduleAdvance(1000);
-  else if (game.phase === 'eventConfirm') scheduleAdvance(3200);
-  else if (game.phase === 'roundEnd') scheduleAdvance(4500);
+  } else if (game.phase === 'reveal') scheduleAdvance(6000);
+  else if (game.phase === 'nap') scheduleAdvance(6000 + game.pendingNaps.length * 3000);
+  else if (game.phase === 'event') scheduleAdvance(1200);
+  else if (game.phase === 'eventConfirm') scheduleAdvance(9000);
+  else if (game.phase === 'roundEnd') scheduleAdvance(8000);
 }
 function scheduleAdvance(ms) { clearTimeout(orchestrateTimer); orchestrateTimer = setTimeout(advanceFromPhase, ms); }
 function advanceFromPhase() {

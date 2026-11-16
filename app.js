@@ -99,13 +99,13 @@ function render() {
   else { sb.className = 'safetyBox danger'; sb.style.background = ''; sb.style.color = ''; sb.textContent = gap <= 0 ? '今起きないと遅刻！' : 'ギリギリ！'; }
   $('handHour').style.transform = 'rotate(' + handAngle(v.now) + 'deg)';
   $('handMin').style.transform = 'rotate(' + ((v.now % 60) / 60) * 360 + 'deg)';
-  $('handDead').style.transform = 'rotate(' + handAngle(v.deadline) + 'deg)';
+  $('handDead').style.transform = 'rotate(' + ((v.deadline % 60) / 60) * 360 + 'deg)';
   const arcEl = $('clockArc');
   if (arcEl) {
-    const sweep = Math.max(0, v.deadline - v.now) * 0.5;
     const gap = v.deadline - v.now;
+    const sweep = Math.min(Math.max(0, gap), 60) * 6;
     const col = gap > 15 ? 'rgba(124,199,160,.55)' : (gap > 5 ? 'rgba(242,178,92,.6)' : 'rgba(239,125,155,.6)');
-    arcEl.style.background = 'conic-gradient(from ' + handAngle(v.now) + 'deg, ' + col + ' 0deg, ' + col + ' ' + sweep + 'deg, transparent ' + sweep + 'deg)';
+    arcEl.style.background = 'conic-gradient(from ' + ((v.now % 60) / 60) * 360 + 'deg, ' + col + ' 0deg, ' + col + ' ' + sweep + 'deg, transparent ' + sweep + 'deg)';
   }
 
   // 得点トークン

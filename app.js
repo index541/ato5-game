@@ -64,8 +64,8 @@ function confetti() {
   }
 })();
 function cellCenter(idx) {
-  const col = idx % 20, row = Math.floor(idx / 20);
-  return { x: col * 39 + 18, y: row * 47 + 22 };
+  const col = idx % 10, row = Math.floor(idx / 10);
+  return { x: col * 10 + 5, y: row * 25 + 12.5 };
 }
 function handAngle(mins) { return ((mins % 720) / 720) * 360; }
 function tipPos(mins, r) {
@@ -108,15 +108,16 @@ function render() {
     const t = document.createElement('div');
     t.className = 'scoreTok';
     t.style.background = p.color;
-    t.style.left = (c.x - 12 + off) + 'px';
-    t.style.top = (c.y - 12 + off) + 'px';
+    t.style.left = c.x + '%';
+    t.style.top = c.y + '%';
+    t.style.transform = 'translate(calc(-50% + ' + off + 'px), calc(-50% + ' + off + 'px))';
     t.textContent = p.id + 1;
     t.title = p.name + ' ' + p.score + '点';
     board.appendChild(t);
     if (p.score >= 40) {
       const o = document.createElement('div');
       o.className = 'scoreTok'; o.style.background = '#655576'; o.style.width = '19px'; o.style.height = '19px'; o.style.fontSize = '7px';
-      o.style.left = (c.x + 8) + 'px'; o.style.top = (c.y - 20) + 'px';
+      o.style.left = c.x + '%'; o.style.top = c.y + '%'; o.style.transform = 'translate(6px,-20px)';
       o.textContent = p.score >= 80 ? '+80' : '+40';
       board.appendChild(o);
     }

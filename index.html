@@ -71,7 +71,7 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 @keyframes flipIn{from{transform:rotateX(90deg) scale(.6);opacity:0}to{transform:rotateX(0) scale(1);opacity:1}}
 .overlay{position:fixed;inset:0;background:rgba(49,42,64,.5);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:12px;z-index:50;animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.modal{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:linear-gradient(180deg,#fffefd,#fff9fc);border-radius:26px;padding:16px;box-shadow:0 24px 70px rgba(58,44,80,.3);animation:popIn .35s cubic-bezier(.2,1.4,.4,1)}
+.modal{width:100%;max-width:560px;max-height:92vh;max-height:86dvh;overflow:auto;background:linear-gradient(180deg,#fffefd,#fff9fc);border-radius:26px;padding:16px;box-shadow:0 24px 70px rgba(58,44,80,.3);animation:popIn .35s cubic-bezier(.2,1.4,.4,1)}
 @keyframes popIn{from{transform:scale(.85) translateY(16px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
 .voteBig{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 .voteBtn{border:0;border-radius:24px;min-height:130px;font-size:22px;font-weight:950;cursor:pointer;transition:transform .12s}
@@ -94,10 +94,10 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 .gainBig{animation:sparklePop .45s ease infinite alternate}
 .eventDanger{animation:shake .55s ease}
 .tapHint{font-size:11px;color:#a264bd;font-weight:900;animation:pulse .7s ease infinite alternate}
-.storyImg{width:min(290px,78vw);border-radius:18px;box-shadow:0 14px 34px rgba(58,44,80,.28);display:block;margin:4px auto 12px}
+.storyImg{width:min(250px,64vw);max-height:32dvh;object-fit:contain;border-radius:18px;box-shadow:0 14px 34px rgba(58,44,80,.28);display:block;margin:4px auto 12px}
 .storyScene{animation:storyIn .45s ease both}
 @keyframes storyIn{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:translateX(0)}}
-.storyText{font-size:16.5px;font-weight:700;line-height:1.75;text-align:center;min-height:84px}
+.storyText{font-size:16px;font-weight:700;line-height:1.7;text-align:center;min-height:78px}
 .storyDots{text-align:center;margin:8px 0 2px}
 .storyDots span{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e2d8f5;margin:0 4px}
 .storyDots span.on{background:#8b75d7}
@@ -276,7 +276,7 @@ label{font-size:13px;font-weight:700;color:var(--muted)}
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="core.js?v=20261117j"></script>
-<script src="app.js?v=20261117j"></script>
+<script src="core.js?v=20261119a"></script>
+<script src="app.js?v=20261119a"></script>
 </body>
 </html>
